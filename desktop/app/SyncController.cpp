@@ -1,8 +1,11 @@
 #include "SyncController.h"
 
+#include <QDateTime>
 #include <QDebug>
+#include <QFile>
 #include <QMetaObject>
 #include <QSettings>
+#include <QTextStream>
 #include <QThread>
 #include <functional>
 
@@ -166,9 +169,14 @@ void SyncController::runSyncWorker(const QString& base, const QString& token) {
     const int conflicts = rep.conflicts;
     const bool ok = rep.ok;
     const QString error = QString::fromStdString(rep.error);
-    finishFromWorker([this, ok, pushed, pulled, conflicts, error] {
+    QStringList details;
+    for (const std::string& d : rep.conflictDetails)
+        details << QString::fromStdString(d);
+    const QString detailText = details.join(QLatin1Char('\n'));
+    finishFromWorker([this, ok, pushed, pulled, conflicts, error, detailText] {
         setSyncing(false);
         if (ok) {
+            if (conflicts > 0) appendConflictLog(detailText);
             setStatusText(QStringLiteral("同步完成：推送 %1 · 拉取 %2 · 冲突 %3")
                               .arg(pushed).arg(pulled).arg(conflicts));
             if (model_) model_->reload();
@@ -177,6 +185,15 @@ void SyncController::runSyncWorker(const QString& base, const QString& token) {
         }
         emit syncDone(ok, pushed, pulled, conflicts, error);
     });
+}
+
+void SyncController::appendConflictLog(const QString& lines) {
+    if (lines.isEmpty()) return;
+    QFile f(dbPath_ + QStringLiteral(".conflicts.log"));
+    if (!f.open(QIODevice::Append | QIODevice::Text)) return;
+    QTextStream out(&f);
+    out << QDateTime::currentDateTime().toString(Qt::ISODate)
+        << " 冲突 " << lines.size() << " 条:\n" << lines << '\n';
 }
 
 #include "SyncController.moc"

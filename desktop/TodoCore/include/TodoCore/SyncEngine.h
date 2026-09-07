@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "TodoCore/HttpClient.h"
 #include "TodoCore/SqliteRepository.h"
@@ -30,6 +31,8 @@ public:
         int conflicts = 0;
         int attempts = 0;
         std::string error;
+        // 本次冲突明细（"id|服务端权威内容"），供冲突日志落盘
+        std::vector<std::string> conflictDetails;
     };
 
     SyncEngine(SqliteRepository& repo, http::Client& http,
@@ -45,8 +48,9 @@ private:
     Report attemptSync();
     // Pull 阶段：拉取 since 之后增量并落库（跳过本地 dirty 行）
     int applyPullItems(const std::string& body);
-    // Push 阶段：推送全部 dirty 行；返回冲突数
-    int applyPushResults(const std::string& body, const std::string& requestBody);
+    // Push 阶段：推送全部 dirty 行；冲突明细写入 outDetails，返回冲突数
+    int applyPushResults(const std::string& body,
+                         std::vector<std::string>& outDetails);
 
     SqliteRepository& repo_;
     http::Client& http_;

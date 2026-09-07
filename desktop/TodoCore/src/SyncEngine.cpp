@@ -135,7 +135,7 @@ SyncEngine::Report SyncEngine::attemptSync() {
             if (pr.status == 401) rep.phase = Phase::Failed;
             return rep;
         }
-        rep.conflicts += applyPushResults(pr.body, reqBody);
+        rep.conflicts += applyPushResults(pr.body, rep.conflictDetails);
         rep.pushed = static_cast<int>(dirty.size());
     }
 
@@ -173,7 +173,8 @@ int SyncEngine::applyPullItems(const std::string& body) {
     return applied;
 }
 
-int SyncEngine::applyPushResults(const std::string& body, const std::string&) {
+int SyncEngine::applyPushResults(const std::string& body,
+                                 std::vector<std::string>& outDetails) {
     json::Value root;
     std::string err;
     if (!json::parse(body, root, &err)) return 0;
@@ -200,7 +201,8 @@ int SyncEngine::applyPushResults(const std::string& body, const std::string&) {
             else if (!wire.id.empty())
                 repo_.add(wire);
             ++conflicts;
-            (void)id;
+            outDetails.push_back(id + "|" + wire.content + "|v" +
+                                 std::to_string(wire.serverVersion));
         }
     }
     return conflicts;

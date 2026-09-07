@@ -47,6 +47,7 @@ private:
     void setSyncing(bool on);
     void setStatusText(const QString& text);
     void finishFromWorker(std::function<void()> fn);
+    void appendConflictLog(const QString& lines);
     void runRegisterWorker(const QString& base, const QString& url);
     void runSyncWorker(const QString& base, const QString& url);
 
