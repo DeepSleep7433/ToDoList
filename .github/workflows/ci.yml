@@ -31,3 +31,20 @@ jobs:
       - name: Run ctest
         working-directory: desktop/build
         run: ctest -C Release --output-on-failure
+
+  mobile:
+    name: mobile (Kotlin + AGP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Unit tests + assemble APK
+        working-directory: mobile
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
