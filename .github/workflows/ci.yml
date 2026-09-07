@@ -47,4 +47,6 @@ jobs:
         run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
       - name: Unit tests + assemble APK
         working-directory: mobile
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug
