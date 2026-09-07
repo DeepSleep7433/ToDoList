@@ -1,3 +1,10 @@
 # setup-matt-pocock-skills 生成的文档 — 仅本地保留，不上传云端
 # (docs/agents/ 的 issue-tracker / triage-labels / domain 等)
 docs/
+
+# 构建产物
+desktop/build/
+build/
+
+# 本地数据库/测试临时文件
+*.db
