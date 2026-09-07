@@ -9,5 +9,11 @@ build/
 # java 构建
 server/target/
 
+# android
+mobile/.gradle/
+mobile/build/
+mobile/app/build/
+mobile/local.properties
+
 # 本地数据库/测试临时文件
 *.db
