@@ -5,6 +5,8 @@ qt_add_executable(todolist_app
   main.cpp
   TodoListModel.h
   TodoListModel.cpp
+  SyncController.h
+  SyncController.cpp
 )
 
 qt_add_qml_module(todolist_app
