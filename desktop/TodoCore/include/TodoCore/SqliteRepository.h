@@ -32,9 +32,18 @@ public:
     bool remove(const std::string& id);
     // 返回未删除的条目（deleted=0），按创建时间倒序
     std::vector<TodoItem> listAll() const;
+    // 返回待推送条目（dirty=1，含 tombstone），按修改时间升序（M2 同步用）
+    std::vector<TodoItem> listDirty() const;
     std::optional<TodoItem> findById(const std::string& id) const;
     // 全部行数（含 tombstone），测试用
     int64_t countAll() const;
+
+    // 键值元数据（同步游标等；独立 meta 表）
+    std::optional<std::string> getMeta(const std::string& key) const;
+    bool setMeta(const std::string& key, const std::string& value);
+
+    // 服务端权威覆盖：全字段（含时间/版本）按传入写入，dirty=0（M2 同步用）
+    bool syncFromServer(const TodoItem& item);
 
     std::string lastError() const;
 

@@ -17,6 +17,11 @@ constexpr const char* kCreateTable =
     "  server_version INTEGER NOT NULL DEFAULT 0,"
     "  dirty          INTEGER NOT NULL DEFAULT 0"
     ");";
+constexpr const char* kCreateMeta =
+    "CREATE TABLE IF NOT EXISTS meta ("
+    "  key   TEXT PRIMARY KEY,"
+    "  value TEXT NOT NULL"
+    ");";
 }
 
 struct SqliteRepository::Impl {
@@ -47,6 +52,14 @@ bool SqliteRepository::open() {
     char* errmsg = nullptr;
     if (sqlite3_exec(d_->db, kCreateTable, nullptr, nullptr, &errmsg) != SQLITE_OK) {
         d_->error = errmsg ? errmsg : "CREATE TABLE failed";
+        sqlite3_free(errmsg);
+        sqlite3_close(d_->db);
+        d_->db = nullptr;
+        return false;
+    }
+    errmsg = nullptr;
+    if (sqlite3_exec(d_->db, kCreateMeta, nullptr, nullptr, &errmsg) != SQLITE_OK) {
+        d_->error = errmsg ? errmsg : "CREATE TABLE meta failed";
         sqlite3_free(errmsg);
         sqlite3_close(d_->db);
         d_->db = nullptr;
@@ -159,6 +172,22 @@ std::vector<TodoItem> SqliteRepository::listAll() const {
     return out;
 }
 
+std::vector<TodoItem> SqliteRepository::listDirty() const {
+    std::vector<TodoItem> out;
+    if (!d_->open) return out;
+    sqlite3_stmt* st = nullptr;
+    const char* sql =
+        "SELECT id, content, is_done, created_at, updated_at, deleted, server_version, dirty"
+        " FROM todos WHERE dirty=1 ORDER BY updated_at ASC;";
+    if (sqlite3_prepare_v2(d_->db, sql, -1, &st, nullptr) != SQLITE_OK) {
+        d_->error = sqlite3_errmsg(d_->db);
+        return out;
+    }
+    while (sqlite3_step(st) == SQLITE_ROW) out.push_back(rowToItem(st));
+    sqlite3_finalize(st);
+    return out;
+}
+
 std::optional<TodoItem> SqliteRepository::findById(const std::string& id) const {
     if (!d_->open) return std::nullopt;
     sqlite3_stmt* st = nullptr;
@@ -190,5 +219,61 @@ int64_t SqliteRepository::countAll() const {
 }
 
 std::string SqliteRepository::lastError() const { return d_->error; }
+
+std::optional<std::string> SqliteRepository::getMeta(const std::string& key) const {
+    if (!d_->open) return std::nullopt;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(d_->db, "SELECT value FROM meta WHERE key=?;", -1, &st, nullptr) != SQLITE_OK) {
+        d_->error = sqlite3_errmsg(d_->db);
+        return std::nullopt;
+    }
+    sqlite3_bind_text(st, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+    std::optional<std::string> out;
+    if (sqlite3_step(st) == SQLITE_ROW) {
+        const unsigned char* v = sqlite3_column_text(st, 0);
+        out = v ? std::string(reinterpret_cast<const char*>(v)) : std::string();
+    }
+    sqlite3_finalize(st);
+    return out;
+}
+
+bool SqliteRepository::setMeta(const std::string& key, const std::string& value) {
+    if (!d_->open) return false;
+    sqlite3_stmt* st = nullptr;
+    const char* sql = "INSERT OR REPLACE INTO meta(key, value) VALUES(?,?);";
+    if (sqlite3_prepare_v2(d_->db, sql, -1, &st, nullptr) != SQLITE_OK) {
+        d_->error = sqlite3_errmsg(d_->db);
+        return false;
+    }
+    sqlite3_bind_text(st, 1, key.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(st, 2, value.c_str(), -1, SQLITE_TRANSIENT);
+    const bool ok = sqlite3_step(st) == SQLITE_DONE;
+    if (!ok) d_->error = sqlite3_errmsg(d_->db);
+    sqlite3_finalize(st);
+    return ok;
+}
+
+bool SqliteRepository::syncFromServer(const TodoItem& item) {
+    if (!d_->open) return false;
+    sqlite3_stmt* st = nullptr;
+    const char* sql =
+        "UPDATE todos SET content=?, is_done=?, created_at=?, updated_at=?,"
+        " deleted=?, server_version=?, dirty=0 WHERE id=?;";
+    if (sqlite3_prepare_v2(d_->db, sql, -1, &st, nullptr) != SQLITE_OK) {
+        d_->error = sqlite3_errmsg(d_->db);
+        return false;
+    }
+    sqlite3_bind_text(st, 1, item.content.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(st, 2, item.isDone ? 1 : 0);
+    sqlite3_bind_int64(st, 3, item.createdAtMs);
+    sqlite3_bind_int64(st, 4, item.updatedAtMs);
+    sqlite3_bind_int(st, 5, item.deleted ? 1 : 0);
+    sqlite3_bind_int64(st, 6, item.serverVersion);
+    sqlite3_bind_text(st, 7, item.id.c_str(), -1, SQLITE_TRANSIENT);
+    const bool ok = sqlite3_step(st) == SQLITE_DONE;
+    if (!ok) d_->error = sqlite3_errmsg(d_->db);
+    sqlite3_finalize(st);
+    return ok;
+}
 
 } // namespace todolist

@@ -1,4 +1,6 @@
-add_executable(todo_core_tests test_repository.cpp)
-target_link_libraries(todo_core_tests PRIVATE todo_core)
-
-add_test(NAME todo_core_tests COMMAND todo_core_tests)
+# 每个测试文件独立可执行（各自有 main），避免符号冲突
+foreach(t test_repository test_json test_syncengine)
+  add_executable(${t} ${t}.cpp)
+  target_link_libraries(${t} PRIVATE todo_core)
+  add_test(NAME ${t} COMMAND ${t})
+endforeach()
