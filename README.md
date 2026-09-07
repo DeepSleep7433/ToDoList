@@ -10,13 +10,13 @@
 | --- | --- | --- |
 | M1 | 桌面本地 CRUD：`TodoCore`(纯 C++) + SQLite + Qt6 QML 壳 | ✅ |
 | M2 | 桌面 ⇄ 服务器双向增量同步（LWW + token + 双设备对账） | ✅ |
-| M3 | 打磨与开源发布（README/LICENSE/CI/冲突日志） | 🚧 本分支 |
-| M4 | Android：Kotlin + Room + Retrofit 接入同一套 API | ⏳ |
+| M3 | 打磨与开源发布（README/LICENSE/CI/冲突日志/重试退避） | ✅ |
+| M4 | Android：Kotlin 核心镜像 + JVM 测试 + APK 门禁 + mobile CI | 🚧 骨架完成，Room/Compose UI 待接入 |
 
 ## 架构
 
 ```
-desktop/                       # C++20 + Qt 6（Qt Quick/QML 壳）
+desktop/                       # C++17 + Qt 6（Qt Quick/QML 壳）
 ├─ TodoCore/                   # 纯 C++ 库（不依赖 Qt，可单测、可移植）
 │  ├─ TodoItem / SqliteRepository   # 模型 + 手写 SQLite CRUD
 │  ├─ Json / HttpClient             # 手写极简 JSON、Winsock HTTP（含 chunked）
@@ -28,6 +28,10 @@ server/                        # Java 21 + Spring Boot 3.3 + JdbcTemplate（手�
 ├─ POST /api/v1/devices        # 设备注册：一次性 token（服务端只存 SHA-256）
 ├─ GET  /api/v1/sync/pull?since=  # 增量拉取（含 tombstone）
 └─ POST /api/v1/sync/push      # 逐条 LWW 合并（时间 → deviceId 平局兜底）
+
+mobile/                        # Kotlin 2.0 + AGP 8.7（纯核心先行，JVM 可测）
+└─ core/                       # TodoItem / MergePolicy / TodoStore / Wire / SyncEngine
+                               #   —— 与桌面 TodoCore 同语义镜像（Room/Compose 待接入）
 ```
 
 **同步模型（v1）**：离线优先、双向增量。本地 SQLite 始终可用（`dirty` 待推送、
@@ -68,14 +72,26 @@ desktop/build/TodoCore/sync_e2e http://localhost:8080/api/v1
 # PASS: 双设备对账一致（LWW 收敛）
 ```
 
+### 移动端（M4 骨架）
+前置：JDK 17+、Android SDK（`cmdline-tools` + `platform-tools` + `platforms;android-34` + `build-tools;34.0.0`），
+`mobile/local.properties` 里写 `sdk.dir=<你的 SDK 路径>`（不入库）。
+```bash
+cd mobile
+./gradlew :app:testDebugUnitTest :app:assembleDebug   # JVM 单测 + 生成 app-debug.apk
+```
+真机阶段（Room/Compose UI）接入后，与桌面端共用同一套 API 契约即可三端互通。
+
 ## 测试
 - 桌面：`test_repository`（持久化/删除/脏标记）、`test_json`、`test_syncengine`（LWW 六场景）
 - 服务端：`MergePolicyTest`（纯逻辑 5 例）
+- 移动端：`MergePolicyTest`（5 例）+ `SyncEngineTest`（6 例），JVM 单测
 - E2E：`sync_e2e`（真实 HTTP ⇄ 真实 PostgreSQL 双设备收敛）
+- CI：`.github/workflows/ci.yml` 三 job——server（ubuntu）、desktop-core（windows）、mobile（ubuntu）
 
 ## 路线图（后续）
-- M3 收尾：CI 已内置；补截图文档、包体积优化
-- M4 Android：Kotlin data class 重写数据模型、Room DAO、Retrofit 调同套 API
+- M4 收尾：Room 持久化 + Compose UI + Retrofit（或保留自研 HTTP），真机三端互通验证
+- 服务端：pull 分页、基于 baseVersion 的乐观锁、设备管理/token 轮换、HTTPS
+- 桌面：Qt 壳进 CI、冲突日志在 UI 展示入口
 
 ## License
 [Apache-2.0](./LICENSE)

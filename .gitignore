@@ -17,3 +17,6 @@ mobile/local.properties
 
 # 本地数据库/测试临时文件
 *.db
+
+# 工具产物
+.reasonix/
