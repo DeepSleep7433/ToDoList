@@ -41,10 +41,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install SDK packages
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
       - name: Unit tests + assemble APK
         working-directory: mobile
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
