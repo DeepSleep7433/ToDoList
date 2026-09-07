@@ -1,8 +1,10 @@
 #include "TodoCore/SyncEngine.h"
 
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <thread>
 
 #include "TodoCore/Json.h"
 
@@ -96,7 +98,9 @@ SyncEngine::Report SyncEngine::syncOnce() {
         rep = attemptSync();
         rep.attempts = attempts + 1;
         if (rep.ok || rep.phase == Phase::Failed) return rep;
-        // 其余：网络/5xx → 重试
+        // 其余：网络/5xx → 退避后重试（300ms × 次数）
+        if (attempts + 1 < kMaxAttempts)
+            std::this_thread::sleep_for(std::chrono::milliseconds(300 * (attempts + 1)));
     }
     rep.phase = Phase::Failed;
     rep.attempts = attempts;
