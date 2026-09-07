@@ -6,5 +6,8 @@ docs/
 desktop/build/
 build/
 
+# java 构建
+server/target/
+
 # 本地数据库/测试临时文件
 *.db

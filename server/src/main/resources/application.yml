@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: todolist-server
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/todolist}
+    username: ${DB_USER:todolist}
+    password: ${DB_PASSWORD:todolist}
+  sql:
+    init:
+      mode: always        # 启动时执行 schema.sql（CREATE IF NOT EXISTS，幂等）
+
+server:
+  port: ${PORT:8080}
+
+# 契约见 docs（本地保留）：POST /api/v1/devices · GET /api/v1/sync/pull?since= · POST /api/v1/sync/push

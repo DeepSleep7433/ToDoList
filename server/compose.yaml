@@ -1,0 +1,16 @@
+# 一键起 PostgreSQL（供本机开发 / 任何有 Docker 的环境）
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: todolist-pg
+    environment:
+      POSTGRES_DB: todolist
+      POSTGRES_USER: todolist
+      POSTGRES_PASSWORD: todolist
+    ports:
+      - "5432:5432"
+    volumes:
+      - todolist_pg_data:/var/lib/postgresql/data
+
+volumes:
+  todolist_pg_data:
